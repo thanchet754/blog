@@ -1654,6 +1654,15 @@
         });
       }
 
+      const coverContainer = document.getElementById('post-cover-container');
+      if (coverContainer) {
+        coverContainer.addEventListener('click', (e) => {
+          if (e.target.tagName === 'IMG') {
+            openLightbox(e.target, 'post-detail');
+          }
+        });
+      }
+
       const editorContent = document.getElementById('editor-content');
       if (editorContent) {
         editorContent.addEventListener('click', (e) => {
@@ -3248,8 +3257,8 @@
       lightboxImg.style.display = 'block';
       cropInterface.style.display = 'none';
       
-      // Control buttons reset
-      document.getElementById('crop-btn').style.display = 'inline-flex';
+      // Control buttons reset (crop button hidden by default)
+      document.getElementById('crop-btn').style.display = 'none';
       document.getElementById('crop-save-btn').style.display = 'none';
       document.getElementById('crop-cancel-btn').style.display = 'none';
       
@@ -3257,6 +3266,7 @@
       const isEnabled = document.getElementById('supabase-enable').checked;
       if (context === 'editor' && (!isEnabled || currentUser)) {
         editControls.style.display = 'flex';
+        document.getElementById('crop-btn').style.display = 'inline-flex';
       } else {
         editControls.style.display = 'none';
       }

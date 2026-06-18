@@ -1156,7 +1156,7 @@
     .handle-nw { top: -6px; left: -6px; cursor: nwse-resize; }
     .handle-ne { top: -6px; right: -6px; cursor: nesw-resize; }
     .handle-se { bottom: -6px; right: -6px; cursor: nwse-resize; }
-    .handle-sw { bottom: -6px; left: -6px; cursor: nwse-resize; }
+    .handle-sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
 
     /* Lightbox Premium Buttons style */
     .lightbox-btn {
@@ -3230,6 +3230,8 @@
     let activeImageElement = null; 
     let lightboxSourceContext = ''; 
     let isCropping = false;
+    let displayedImgWidth = 0;
+    let displayedImgHeight = 0;
     
     let cropBox = { left: 0, top: 0, width: 0, height: 0 };
     let activeHandle = null;
@@ -3266,7 +3268,11 @@
 
     window.closeLightbox = function() {
       document.getElementById('image-lightbox').style.display = 'none';
-      isCropping = false;
+      if (isCropping) {
+        cancelCropping();
+      } else {
+        isCropping = false;
+      }
     };
 
     window.cancelCropping = function() {
@@ -3296,6 +3302,13 @@
       const img = document.getElementById('lightbox-img');
       const cropInterface = document.getElementById('crop-interface');
       
+      // Get image dimensions as displayed BEFORE hiding!
+      displayedImgWidth = img.clientWidth || img.naturalWidth || 500;
+      displayedImgHeight = img.clientHeight || img.naturalHeight || 300;
+      
+      const width = displayedImgWidth;
+      const height = displayedImgHeight;
+      
       // Hide static image
       img.style.display = 'none';
       cropInterface.style.display = 'block';
@@ -3304,10 +3317,6 @@
       document.getElementById('crop-btn').style.display = 'none';
       document.getElementById('crop-save-btn').style.display = 'inline-flex';
       document.getElementById('crop-cancel-btn').style.display = 'inline-flex';
-      
-      // Get image dimensions as displayed
-      const width = img.clientWidth;
-      const height = img.clientHeight;
       
       // Initialize crop box to 80% of image size centered
       const boxW = Math.floor(width * 0.8);
@@ -3351,6 +3360,7 @@
         
         const target = e.target;
         
+        let shouldDrag = false;
         if (target.classList.contains('crop-handle')) {
           e.preventDefault();
           isResizing = true;
@@ -3358,17 +3368,23 @@
           startX = clientX;
           startY = clientY;
           startBox = { ...cropBox };
+          shouldDrag = true;
         } else if (target.id === 'crop-box') {
           e.preventDefault();
           isMoving = true;
           startX = clientX;
           startY = clientY;
           startBox = { ...cropBox };
+          shouldDrag = true;
+        }
+        
+        if (shouldDrag) {
+          window.addEventListener('mousemove', dragMove);
+          window.addEventListener('touchmove', dragMove, { passive: false });
+          window.addEventListener('mouseup', endDrag);
+          window.addEventListener('touchend', endDrag);
         }
       }
-      
-      window.addEventListener('mousemove', dragMove);
-      window.addEventListener('touchmove', dragMove, { passive: false });
       
       function dragMove(e) {
         if (!isMoving && !isResizing) return;
@@ -3460,13 +3476,14 @@
         box.style.backgroundPosition = `-${cropBox.left}px -${cropBox.top}px`;
       }
       
-      window.addEventListener('mouseup', endDrag);
-      window.addEventListener('touchend', endDrag);
-      
       function endDrag() {
         isMoving = false;
         isResizing = false;
         activeHandle = null;
+        window.removeEventListener('mousemove', dragMove);
+        window.removeEventListener('touchmove', dragMove);
+        window.removeEventListener('mouseup', endDrag);
+        window.removeEventListener('touchend', endDrag);
       }
     }
 
@@ -3476,7 +3493,10 @@
       const img = document.getElementById('lightbox-img');
       
       const origImg = new Image();
-      origImg.crossOrigin = "anonymous";
+      // Only set crossOrigin if it is a remote URL to prevent failures on data: URLs
+      if (img.src && !img.src.startsWith('data:')) {
+        origImg.crossOrigin = "anonymous";
+      }
       origImg.src = img.src;
       
       showToast("Đang xử lý cắt ảnh...", "info");
@@ -3486,8 +3506,8 @@
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           
-          const ratioX = origImg.naturalWidth / img.clientWidth;
-          const ratioY = origImg.naturalHeight / img.clientHeight;
+          const ratioX = origImg.naturalWidth / (displayedImgWidth || 1);
+          const ratioY = origImg.naturalHeight / (displayedImgHeight || 1);
           
           const sourceX = cropBox.left * ratioX;
           const sourceY = cropBox.top * ratioY;
@@ -3508,9 +3528,15 @@
           
           if (isSupabaseEnabled && supabaseClient) {
             showToast("Đang tải ảnh đã cắt lên Supabase...", "info");
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            const file = new File([blob], `cropped_${Date.now()}.png`, { type: 'image/png' });
-            finalImageUrl = await uploadFileToSupabase(file);
+            try {
+              const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+              const file = new File([blob], `cropped_${Date.now()}.png`, { type: 'image/png' });
+              finalImageUrl = await uploadFileToSupabase(file);
+            } catch (uploadErr) {
+              console.error("Supabase Storage upload failed, falling back to Base64:", uploadErr);
+              showToast("Tải lên Supabase thất bại! Tự động chuyển sang nhúng Base64 để tránh mất ảnh...", "warning");
+              finalImageUrl = canvas.toDataURL('image/png');
+            }
           } else {
             finalImageUrl = canvas.toDataURL('image/png');
           }

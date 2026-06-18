@@ -2783,9 +2783,20 @@
 
         for (const post of localPosts) {
           try {
+            // Clean and normalize post properties to match the Supabase database schema columns
+            const sanitizedPost = {
+              id: post.id || 'post-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+              title: post.title || 'Không có tiêu đề',
+              summary: post.summary || '',
+              content: post.content || '',
+              cover_image: post.cover_image || post.coverImage || '',
+              category: post.category || 'Bài viết',
+              date: post.date || new Date().toISOString().split('T')[0]
+            };
+
             const { error } = await supabaseClient
               .from('posts')
-              .upsert([post]);
+              .upsert([sanitizedPost]);
 
             if (error) throw error;
             successCount++;
@@ -3032,11 +3043,22 @@
         let localPosts = JSON.parse(localBackup);
         const post = localPosts[index];
         if (!post) return;
+
+        // Clean and normalize post properties to match the Supabase database schema columns
+        const sanitizedPost = {
+          id: post.id || 'post-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+          title: post.title || 'Không có tiêu đề',
+          summary: post.summary || '',
+          content: post.content || '',
+          cover_image: post.cover_image || post.coverImage || '',
+          category: post.category || 'Bài viết',
+          date: post.date || new Date().toISOString().split('T')[0]
+        };
         
         showToast("Đang đồng bộ...", "info");
         const { error } = await supabaseClient
           .from('posts')
-          .upsert([post]);
+          .upsert([sanitizedPost]);
           
         if (error) throw error;
         

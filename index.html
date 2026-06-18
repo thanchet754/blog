@@ -1070,114 +1070,71 @@
       }
     }
 
-    }
-
-    /* LIGHTBOX & CROP MODAL */
+    /* LIGHTBOX MODAL STYLES */
     .lightbox-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(15, 23, 42, 0.95);
-      z-index: 2000;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 2500;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       animation: fadeIn 0.25s ease;
     }
 
-    .lightbox-header {
-      position: absolute;
-      top: 1rem;
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      padding: 0 2rem;
-      box-sizing: border-box;
-      z-index: 2010;
-    }
-
-    .lightbox-controls {
-      display: flex;
-      gap: 0.75rem;
-    }
-
-    .lightbox-body {
+    .lightbox-content {
       position: relative;
       max-width: 90%;
-      max-height: 80%;
+      max-height: 90%;
       display: flex;
       align-items: center;
       justify-content: center;
+      animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .lightbox-img {
       max-width: 100%;
-      max-height: 80vh;
+      max-height: 85vh;
       object-fit: contain;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-      border-radius: 4px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      border-radius: 8px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      cursor: zoom-out;
     }
 
-    /* Cropper Styles */
-    .crop-container {
-      position: relative;
-      display: inline-block;
-      cursor: crosshair;
-      user-select: none;
-    }
-
-    .crop-bg-img {
-      max-width: 100%;
-      max-height: 80vh;
-      display: block;
-      opacity: 0.5;
-    }
-
-    .crop-box {
+    .lightbox-close-btn {
       position: absolute;
-      border: 2px dashed #ffffff;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
-      overflow: hidden;
-      cursor: move;
-    }
-
-    .crop-handle {
-      position: absolute;
-      width: 12px;
-      height: 12px;
-      background: var(--accent-color);
-      border: 2px solid #ffffff;
-      border-radius: 50%;
-    }
-
-    .handle-nw { top: -6px; left: -6px; cursor: nwse-resize; }
-    .handle-ne { top: -6px; right: -6px; cursor: nesw-resize; }
-    .handle-se { bottom: -6px; right: -6px; cursor: nwse-resize; }
-    .handle-sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
-
-    /* Lightbox Premium Buttons style */
-    .lightbox-btn {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
+      top: 1.5rem;
+      right: 1.5rem;
+      width: 44px;
+      height: 44px;
       background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #f1f5f9;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      font-size: 2rem;
+      line-height: 1;
+      border-radius: 50%;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s ease;
+      z-index: 2510;
     }
-    .lightbox-btn:hover {
-      background: rgba(15, 23, 42, 0.85);
-      border-color: rgba(255, 255, 255, 0.4);
-      color: white;
+
+    .lightbox-close-btn:hover {
+      background: #ef4444;
+      border-color: #ef4444;
       transform: scale(1.05);
+    }
+
+    @keyframes zoomIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
     }
   </style>
 </head>
@@ -1548,39 +1505,11 @@
     </div>
   </div>
 
-  <!-- IMAGE LIGHTBOX & CROPPER MODAL -->
-  <div id="image-lightbox" class="lightbox-overlay" style="display: none;">
-    <div class="lightbox-header" style="position: absolute; top: 1rem; right: 2rem; z-index: 2010; display: flex; gap: 0.75rem;">
-      <div class="lightbox-controls" id="lightbox-edit-controls" style="display: none; gap: 0.75rem;">
-        <button class="lightbox-btn" id="crop-btn" onclick="startCropping()" title="Cắt ảnh">
-          <!-- Crop Icon SVG -->
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.13 1L6 16h15"/><path d="M1 6.13L16 6v15"/></svg>
-        </button>
-        <button class="lightbox-btn" id="crop-save-btn" onclick="applyCrop()" style="display: none; background: #10b981; border-color: #10b981;" title="Hoàn tất">
-          <!-- Check icon SVG -->
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </button>
-        <button class="lightbox-btn" id="crop-cancel-btn" onclick="cancelCropping()" style="display: none; background: var(--danger-color); border-color: var(--danger-color);" title="Hủy">
-          <!-- Close/Cancel icon SVG -->
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="lightbox-controls" style="display: flex; gap: 0.75rem;">
-        <button class="lightbox-btn" onclick="downloadLightboxImage()" title="Tải ảnh về máy">
-          <!-- Download Icon SVG -->
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </button>
-        <button class="lightbox-btn" onclick="closeLightbox()" title="Đóng">
-          <!-- Close icon SVG -->
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-    </div>
-    <div class="lightbox-body" id="lightbox-body">
+  <!-- IMAGE LIGHTBOX MODAL -->
+  <div id="image-lightbox" class="lightbox-overlay" style="display: none;" onclick="closeLightbox()">
+    <button class="lightbox-close-btn" onclick="closeLightbox()" title="Đóng">&times;</button>
+    <div class="lightbox-content">
       <img id="lightbox-img" class="lightbox-img" src="" alt="Zoomed image">
-      
-      <!-- Crop Tool Interface (HTML injection) -->
-      <div id="crop-interface" style="display: none; width: 100%; height: 100%;"></div>
     </div>
   </div>
 
@@ -3233,341 +3162,39 @@
       }
     };
 
-    // --- IMAGE LIGHTBOX & CROPPER ---
-    let activeImageElement = null; 
-    let lightboxSourceContext = ''; 
-    let isCropping = false;
-    let displayedImgWidth = 0;
-    let displayedImgHeight = 0;
-    
-    let cropBox = { left: 0, top: 0, width: 0, height: 0 };
-    let activeHandle = null;
-
-    window.openLightbox = function(imgElement, context) {
-      activeImageElement = imgElement;
-      lightboxSourceContext = context;
-      isCropping = false;
-      
+    // --- IMAGE LIGHTBOX ---
+    window.openLightbox = function(imgElement) {
       const lightbox = document.getElementById('image-lightbox');
       const lightboxImg = document.getElementById('lightbox-img');
-      const cropInterface = document.getElementById('crop-interface');
-      const editControls = document.getElementById('lightbox-edit-controls');
+      if (!lightbox || !lightboxImg || !imgElement || !imgElement.src) return;
       
       lightboxImg.src = imgElement.src;
-      lightboxImg.style.display = 'block';
-      cropInterface.style.display = 'none';
-      
-      // Control buttons reset (crop button hidden by default)
-      document.getElementById('crop-btn').style.display = 'none';
-      document.getElementById('crop-save-btn').style.display = 'none';
-      document.getElementById('crop-cancel-btn').style.display = 'none';
-      
-      // ONLY show Edit/Crop controls when clicked inside the editor AND user has edit permissions (Admin logged in OR Local Mode)
-      const isEnabled = document.getElementById('supabase-enable').checked;
-      if (context === 'editor' && (!isEnabled || currentUser)) {
-        editControls.style.display = 'flex';
-        document.getElementById('crop-btn').style.display = 'inline-flex';
-      } else {
-        editControls.style.display = 'none';
-      }
-      
       lightbox.style.display = 'flex';
+      
+      // Prevent background scrolling
+      document.body.style.overflow = 'hidden';
+      
+      // Add keyboard Esc event listener
+      window.addEventListener('keydown', handleLightboxEsc);
     };
 
     window.closeLightbox = function() {
-      document.getElementById('image-lightbox').style.display = 'none';
-      if (isCropping) {
-        cancelCropping();
-      } else {
-        isCropping = false;
-      }
+      const lightbox = document.getElementById('image-lightbox');
+      if (!lightbox) return;
+      
+      lightbox.style.display = 'none';
+      
+      // Restore background scrolling
+      document.body.style.overflow = '';
+      
+      window.removeEventListener('keydown', handleLightboxEsc);
     };
 
-    window.cancelCropping = function() {
-      isCropping = false;
-      document.getElementById('lightbox-img').style.display = 'block';
-      document.getElementById('crop-interface').style.display = 'none';
-      
-      document.getElementById('crop-btn').style.display = 'inline-flex';
-      document.getElementById('crop-save-btn').style.display = 'none';
-      document.getElementById('crop-cancel-btn').style.display = 'none';
-    };
-
-    window.downloadLightboxImage = function() {
-      const img = document.getElementById('lightbox-img');
-      if (!img || !img.src) return;
-      
-      const a = document.createElement('a');
-      a.href = img.src;
-      a.download = `ngoc_blog_image_${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    };
-
-    window.startCropping = function() {
-      isCropping = true;
-      const img = document.getElementById('lightbox-img');
-      const cropInterface = document.getElementById('crop-interface');
-      
-      // Get image dimensions as displayed BEFORE hiding!
-      displayedImgWidth = img.clientWidth || img.naturalWidth || 500;
-      displayedImgHeight = img.clientHeight || img.naturalHeight || 300;
-      
-      const width = displayedImgWidth;
-      const height = displayedImgHeight;
-      
-      // Hide static image
-      img.style.display = 'none';
-      cropInterface.style.display = 'block';
-      
-      // Show cropper controls
-      document.getElementById('crop-btn').style.display = 'none';
-      document.getElementById('crop-save-btn').style.display = 'inline-flex';
-      document.getElementById('crop-cancel-btn').style.display = 'inline-flex';
-      
-      // Initialize crop box to 80% of image size centered
-      const boxW = Math.floor(width * 0.8);
-      const boxH = Math.floor(height * 0.8);
-      const boxL = Math.floor((width - boxW) / 2);
-      const boxT = Math.floor((height - boxH) / 2);
-      
-      cropBox = { left: boxL, top: boxT, width: boxW, height: boxH };
-      
-      cropInterface.innerHTML = `
-        <div class="crop-container" id="crop-container" style="width: ${width}px; height: ${height}px; margin: auto; position: relative;">
-          <img class="crop-bg-img" src="${img.src}" style="width: ${width}px; height: ${height}px;" draggable="false">
-          <div class="crop-box" id="crop-box" style="left: ${boxL}px; top: ${boxT}px; width: ${boxW}px; height: ${boxH}px; background-image: url('${img.src}'); background-size: ${width}px ${height}px; background-position: -${boxL}px -${boxT}px;">
-            <div class="crop-handle handle-nw" data-handle="nw"></div>
-            <div class="crop-handle handle-ne" data-handle="ne"></div>
-            <div class="crop-handle handle-se" data-handle="se"></div>
-            <div class="crop-handle handle-sw" data-handle="sw"></div>
-          </div>
-        </div>
-      `;
-      
-      setupCropperEvents(width, height);
-    };
-
-    function setupCropperEvents(imgWidth, imgHeight) {
-      const container = document.getElementById('crop-container');
-      const box = document.getElementById('crop-box');
-      if (!container || !box) return;
-      
-      let isMoving = false;
-      let isResizing = false;
-      let startX = 0, startY = 0;
-      let startBox = { ...cropBox };
-      
-      container.addEventListener('mousedown', startDrag);
-      container.addEventListener('touchstart', startDrag, { passive: false });
-      
-      function startDrag(e) {
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        
-        const target = e.target;
-        
-        let shouldDrag = false;
-        if (target.classList.contains('crop-handle')) {
-          e.preventDefault();
-          isResizing = true;
-          activeHandle = target.getAttribute('data-handle');
-          startX = clientX;
-          startY = clientY;
-          startBox = { ...cropBox };
-          shouldDrag = true;
-        } else if (target.id === 'crop-box') {
-          e.preventDefault();
-          isMoving = true;
-          startX = clientX;
-          startY = clientY;
-          startBox = { ...cropBox };
-          shouldDrag = true;
-        }
-        
-        if (shouldDrag) {
-          window.addEventListener('mousemove', dragMove);
-          window.addEventListener('touchmove', dragMove, { passive: false });
-          window.addEventListener('mouseup', endDrag);
-          window.addEventListener('touchend', endDrag);
-        }
-      }
-      
-      function dragMove(e) {
-        if (!isMoving && !isResizing) return;
-        if (e.cancelable) e.preventDefault();
-        
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        
-        const dx = clientX - startX;
-        const dy = clientY - startY;
-        
-        if (isMoving) {
-          let newL = startBox.left + dx;
-          let newT = startBox.top + dy;
-          
-          if (newL < 0) newL = 0;
-          if (newT < 0) newT = 0;
-          if (newL + startBox.width > imgWidth) newL = imgWidth - startBox.width;
-          if (newT + startBox.height > imgHeight) newT = imgHeight - startBox.height;
-          
-          cropBox.left = newL;
-          cropBox.top = newT;
-        } else if (isResizing) {
-          let newL = startBox.left;
-          let newT = startBox.top;
-          let newW = startBox.width;
-          let newH = startBox.height;
-          
-          const minSize = 30;
-          
-          if (activeHandle === 'se') {
-            newW = startBox.width + dx;
-            newH = startBox.height + dy;
-            if (newL + newW > imgWidth) newW = imgWidth - newL;
-            if (newT + newH > imgHeight) newH = imgHeight - newT;
-            if (newW < minSize) newW = minSize;
-            if (newH < minSize) newH = minSize;
-          } else if (activeHandle === 'sw') {
-            newW = startBox.width - dx;
-            newH = startBox.height + dy;
-            if (newW < minSize) newW = minSize;
-            else newL = startBox.left + dx;
-            
-            if (newL < 0) {
-              newW += newL;
-              newL = 0;
-            }
-            if (newT + newH > imgHeight) newH = imgHeight - newT;
-            if (newH < minSize) newH = minSize;
-          } else if (activeHandle === 'ne') {
-            newW = startBox.width + dx;
-            newH = startBox.height - dy;
-            if (newH < minSize) newH = minSize;
-            else newT = startBox.top + dy;
-            
-            if (newT < 0) {
-              newH += newT;
-              newT = 0;
-            }
-            if (newL + newW > imgWidth) newW = imgWidth - newL;
-            if (newW < minSize) newW = minSize;
-          } else if (activeHandle === 'nw') {
-            newW = startBox.width - dx;
-            newH = startBox.height - dy;
-            
-            if (newW < minSize) newW = minSize;
-            else newL = startBox.left + dx;
-            
-            if (newH < minSize) newH = minSize;
-            else newT = startBox.top + dy;
-            
-            if (newL < 0) {
-              newW += newL;
-              newL = 0;
-            }
-            if (newT < 0) {
-              newH += newT;
-              newT = 0;
-            }
-          }
-          
-          cropBox = { left: newL, top: newT, width: newW, height: newH };
-        }
-        
-        box.style.left = `${cropBox.left}px`;
-        box.style.top = `${cropBox.top}px`;
-        box.style.width = `${cropBox.width}px`;
-        box.style.height = `${cropBox.height}px`;
-        box.style.backgroundPosition = `-${cropBox.left}px -${cropBox.top}px`;
-      }
-      
-      function endDrag() {
-        isMoving = false;
-        isResizing = false;
-        activeHandle = null;
-        window.removeEventListener('mousemove', dragMove);
-        window.removeEventListener('touchmove', dragMove);
-        window.removeEventListener('mouseup', endDrag);
-        window.removeEventListener('touchend', endDrag);
+    function handleLightboxEsc(e) {
+      if (e.key === 'Escape') {
+        closeLightbox();
       }
     }
-
-    window.applyCrop = async function() {
-      if (!isCropping) return;
-      
-      const img = document.getElementById('lightbox-img');
-      
-      const origImg = new Image();
-      // Only set crossOrigin if it is a remote URL to prevent failures on data: URLs
-      if (img.src && !img.src.startsWith('data:')) {
-        origImg.crossOrigin = "anonymous";
-      }
-      origImg.src = img.src;
-      
-      showToast("Đang xử lý cắt ảnh...", "info");
-      
-      origImg.onload = async () => {
-        try {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          
-          const ratioX = origImg.naturalWidth / (displayedImgWidth || 1);
-          const ratioY = origImg.naturalHeight / (displayedImgHeight || 1);
-          
-          const sourceX = cropBox.left * ratioX;
-          const sourceY = cropBox.top * ratioY;
-          const sourceW = cropBox.width * ratioX;
-          const sourceH = cropBox.height * ratioY;
-          
-          canvas.width = sourceW;
-          canvas.height = sourceH;
-          
-          ctx.drawImage(
-            origImg,
-            sourceX, sourceY, sourceW, sourceH,
-            0, 0, sourceW, sourceH
-          );
-          
-          const isSupabaseEnabled = document.getElementById('supabase-enable').checked;
-          let finalImageUrl = '';
-          
-          if (isSupabaseEnabled && supabaseClient) {
-            showToast("Đang tải ảnh đã cắt lên Supabase...", "info");
-            try {
-              const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-              const file = new File([blob], `cropped_${Date.now()}.png`, { type: 'image/png' });
-              finalImageUrl = await uploadFileToSupabase(file);
-            } catch (uploadErr) {
-              console.error("Supabase Storage upload failed:", uploadErr);
-              showToast("Tải lên Supabase thất bại! Không thể lưu ảnh đã cắt.", "error");
-              return;
-            }
-          } else {
-            finalImageUrl = canvas.toDataURL('image/png');
-          }
-          
-          if (activeImageElement) {
-            activeImageElement.src = finalImageUrl;
-            
-            if (lightboxSourceContext === 'editor') {
-              showToast("Đã cập nhật ảnh đã cắt vào khung soạn thảo!");
-            }
-          }
-          
-          closeLightbox();
-        } catch (err) {
-          console.error("Cropping Error:", err);
-          showToast("Lỗi khi cắt ảnh! Thử lại.", "error");
-        }
-      };
-      
-      origImg.onerror = () => {
-        showToast("Lỗi khi tải tài nguyên ảnh gốc để cắt!", "error");
-      };
-    };
 
     // --- COPY POST LINK ---
     function copyPostLink() {

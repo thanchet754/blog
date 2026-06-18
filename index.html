@@ -1091,6 +1091,11 @@
         <span class="logo-text">Ngọc Blog</span>
       </div>
       <div class="header-actions">
+        <button class="btn btn-secondary" id="drafts-manager-btn" onclick="openDraftsManager()" style="display: none;" title="Quản lý bài viết nháp và lỗi đồng bộ">
+          <!-- File Text Icon SVG -->
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span>Bài Nháp (<span id="header-drafts-count">0</span>)</span>
+        </button>
         <button class="btn btn-secondary" onclick="exportHtml()" title="Lưu và tải xuống file HTML chứa dữ liệu hiện tại">
           <!-- Download Icon SVG -->
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -1417,6 +1422,34 @@
         </div>
       </div>
 
+      <!-- DRAFTS & UNSYNCED MANAGER MODAL -->
+      <div id="drafts-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+          <div class="modal-header">
+            <h3 style="font-family: var(--font-heading);">Quản Lý Bài Nháp & Chưa Đồng Bộ</h3>
+            <button class="modal-close-btn" onclick="closeDraftsManager()">&times;</button>
+          </div>
+          <div class="modal-body" style="gap: 1.5rem;">
+            <div id="active-draft-section">
+              <h4 style="font-size: 0.95rem; font-weight: 600; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Bản Nháp Hiện Tại (Tự Động Lưu)</h4>
+              <div id="active-draft-container">
+                <!-- Active Draft Item -->
+              </div>
+            </div>
+            
+            <div id="unsynced-posts-section">
+              <h4 style="font-size: 0.95rem; font-weight: 600; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Bài Viết Chưa Đồng Bộ / Lỗi Đồng Bộ</h4>
+              <div id="unsynced-posts-container" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <!-- Unsynced Posts List -->
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeDraftsManager()">Đóng</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </main>
 
@@ -1473,6 +1506,9 @@
       
       // Setup drag & drop for Cover Image
       setupCoverDragAndDrop();
+
+      // Update drafts count in the header on load
+      updateDraftsCount();
 
       // Check if there is an unsaved draft from localStorage
       loadDraftIfNeeded();
@@ -1801,6 +1837,7 @@
     function cancelEdit() {
       if (confirm("Bạn có chắc chắn muốn hủy? Mọi thay đổi chưa lưu sẽ bị mất.")) {
         localStorage.removeItem('antigravity_blog_draft');
+        updateDraftsCount();
         if (currentEditingPostId) {
           viewPostDetail(currentEditingPostId);
         } else {
@@ -1932,6 +1969,7 @@
       renderCategoryPills();
       renderPosts();
       viewPostDetail(postData.id);
+      updateDraftsCount();
     }
 
     // --- AUTOSAVE DRAFT MECHANISM ---
@@ -1954,6 +1992,7 @@
         if (currentDraftString !== lastSavedContent && (title || content)) {
           localStorage.setItem('antigravity_blog_draft', currentDraftString);
           lastSavedContent = currentDraftString;
+          updateDraftsCount();
           
           statusSpan.style.display = 'flex';
           setTimeout(() => {
@@ -1995,6 +2034,7 @@
               startAutoSaveTimer();
             } else {
               localStorage.removeItem('antigravity_blog_draft');
+              updateDraftsCount();
             }
           }
         } catch(e) {
@@ -2101,6 +2141,7 @@
         // Local mode: always show write button, hide auth lock
         authBtn.style.display = 'none';
         if (writeBtn) writeBtn.style.display = 'inline-flex';
+        updateDraftsCount();
         return;
       }
       
@@ -2117,6 +2158,7 @@
         authBtn.title = "Đăng nhập Admin";
         if (writeBtn) writeBtn.style.display = 'none';
       }
+      updateDraftsCount();
     }
 
     function setupSupabaseAuthListener() {
@@ -2763,6 +2805,7 @@
           
           // Reload posts from Supabase to refresh the UI list
           loadPostsFromScript();
+          updateDraftsCount();
         }
 
         if (errorCount > 0) {
@@ -2773,6 +2816,245 @@
         showToast("Có lỗi xảy ra trong quá trình đồng bộ!", "error");
       }
     }
+
+    // --- DRAFTS & UNSYNCED MANAGER LOGIC ---
+    function updateDraftsCount() {
+      let totalCount = 0;
+      
+      // 1. Check active draft
+      const draft = localStorage.getItem('antigravity_blog_draft');
+      let hasActiveDraft = false;
+      if (draft) {
+        try {
+          const draftData = JSON.parse(draft);
+          if (draftData.title || draftData.content) {
+            hasActiveDraft = true;
+            totalCount++;
+          }
+        } catch (e) {}
+      }
+      
+      // 2. Check unsynced posts
+      let unsyncedCount = 0;
+      const isEnabled = document.getElementById('supabase-enable').checked;
+      if (isEnabled) {
+        const localBackup = localStorage.getItem('antigravity_blog_posts');
+        if (localBackup) {
+          try {
+            const localPosts = JSON.parse(localBackup);
+            unsyncedCount = localPosts.length;
+            totalCount += unsyncedCount;
+          } catch (e) {}
+        }
+      }
+      
+      // Update UI in header
+      const draftsBtn = document.getElementById('drafts-manager-btn');
+      const countSpan = document.getElementById('header-drafts-count');
+      
+      if (draftsBtn && countSpan) {
+        if (totalCount > 0 && (currentUser || !isEnabled)) {
+          countSpan.textContent = totalCount;
+          draftsBtn.style.display = 'inline-flex';
+        } else {
+          draftsBtn.style.display = 'none';
+        }
+      }
+    }
+
+    window.openDraftsManager = function() {
+      renderDraftsManagerContents();
+      document.getElementById('drafts-modal').style.display = 'flex';
+    };
+
+    window.closeDraftsManager = function() {
+      document.getElementById('drafts-modal').style.display = 'none';
+    };
+
+    function renderDraftsManagerContents() {
+      // 1. Active Draft
+      const activeContainer = document.getElementById('active-draft-container');
+      const draft = localStorage.getItem('antigravity_blog_draft');
+      let activeDraftHtml = `<p style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">Không có bản nháp tự động lưu nào.</p>`;
+      
+      if (draft && activeContainer) {
+        try {
+          const draftData = JSON.parse(draft);
+          if (draftData.title || draftData.content) {
+            activeDraftHtml = `
+              <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                <div style="flex: 1; min-width: 0;">
+                  <strong style="display: block; font-size: 0.9rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${escapeHTML(draftData.title || 'Bài viết không tiêu đề')}</strong>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">${draftData.category ? `Danh mục: ${escapeHTML(draftData.category)}` : 'Chưa xếp danh mục'}</span>
+                </div>
+                <div style="display: flex; gap: 0.35rem;">
+                  <button class="btn btn-primary" onclick="restoreActiveDraft()" style="padding: 0.4rem 0.75rem; font-size: 0.75rem; height: auto;">Biên tập</button>
+                  <button class="btn btn-danger" onclick="deleteActiveDraft()" style="padding: 0.4rem 0.75rem; font-size: 0.75rem; height: auto; width: auto;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+                </div>
+              </div>
+            `;
+          }
+        } catch(e) {}
+      }
+      if (activeContainer) activeContainer.innerHTML = activeDraftHtml;
+      
+      // 2. Unsynced/Failed sync posts
+      const unsyncedContainer = document.getElementById('unsynced-posts-container');
+      const localBackup = localStorage.getItem('antigravity_blog_posts');
+      let unsyncedHtml = `<p style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">Không có bài viết nào bị lỗi đồng bộ hoặc chưa đồng bộ.</p>`;
+      
+      if (localBackup && unsyncedContainer) {
+        try {
+          const localPosts = JSON.parse(localBackup);
+          if (localPosts.length > 0) {
+            unsyncedHtml = localPosts.map((post, index) => `
+              <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; border-left: 3px solid var(--danger-color);">
+                <div style="flex: 1; min-width: 0;">
+                  <strong style="display: block; font-size: 0.9rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${escapeHTML(post.title || 'Không có tiêu đề')}</strong>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">${formatDate(post.date)} | ${escapeHTML(post.category || 'Bài viết')}</span>
+                </div>
+                <div style="display: flex; gap: 0.35rem; align-items: center;">
+                  <button class="btn btn-primary" onclick="editUnsyncedPost(${index})" style="padding: 0.4rem 0.75rem; font-size: 0.75rem; height: auto;">Sửa & Thử lại</button>
+                  <button class="btn btn-secondary" onclick="syncSingleUnsyncedPost(${index})" style="padding: 0.4rem 0.75rem; font-size: 0.75rem; height: auto; width: auto;" title="Đồng bộ lại"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                  <button class="btn btn-danger" onclick="deleteUnsyncedPost(${index})" style="padding: 0.4rem 0.75rem; font-size: 0.75rem; height: auto; width: auto;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+                </div>
+              </div>
+            `).join('');
+          }
+        } catch(e) {}
+      }
+      if (unsyncedContainer) unsyncedContainer.innerHTML = unsyncedHtml;
+    }
+
+    window.restoreActiveDraft = function() {
+      const draft = localStorage.getItem('antigravity_blog_draft');
+      if (!draft) return;
+      
+      try {
+        const draftData = JSON.parse(draft);
+        currentEditingPostId = draftData.currentEditingPostId;
+        document.getElementById('post-title').value = draftData.title || '';
+        document.getElementById('post-category').value = draftData.category || '';
+        document.getElementById('post-summary').value = draftData.summary || '';
+        document.getElementById('editor-content').innerHTML = draftData.content || '';
+        
+        if (draftData.coverBase64) {
+          setCoverImage(draftData.coverBase64);
+        } else {
+          removeCoverImage();
+        }
+        
+        document.getElementById('editor-view-title').textContent = currentEditingPostId ? "Biên tập bài viết (Khôi phục nháp)" : "Biên tập bài nháp mới";
+        showView('editor');
+        closeDraftsManager();
+        startAutoSaveTimer();
+      } catch (e) {
+        console.error(e);
+        showToast("Lỗi khi mở bản nháp!", "error");
+      }
+    };
+
+    window.deleteActiveDraft = function() {
+      if (confirm("Bạn có chắc chắn muốn xóa bản nháp tự động lưu này không?")) {
+        localStorage.removeItem('antigravity_blog_draft');
+        showToast("Đã xóa bản nháp.");
+        renderDraftsManagerContents();
+        updateDraftsCount();
+      }
+    };
+
+    window.editUnsyncedPost = function(index) {
+      const localBackup = localStorage.getItem('antigravity_blog_posts');
+      if (!localBackup) return;
+      
+      try {
+        const localPosts = JSON.parse(localBackup);
+        const post = localPosts[index];
+        if (!post) return;
+        
+        currentEditingPostId = post.id;
+        document.getElementById('editor-view-title').textContent = "Sửa Bài Viết Chưa Đồng Bộ";
+        document.getElementById('post-title').value = post.title || '';
+        document.getElementById('post-category').value = post.category || '';
+        document.getElementById('post-summary').value = post.summary || '';
+        document.getElementById('editor-content').innerHTML = post.content || '';
+        
+        if (post.cover_image) {
+          setCoverImage(post.cover_image);
+        } else {
+          removeCoverImage();
+        }
+        
+        showView('editor');
+        closeDraftsManager();
+        startAutoSaveTimer();
+      } catch (e) {
+        console.error(e);
+        showToast("Lỗi khi tải bài viết chưa đồng bộ!", "error");
+      }
+    };
+
+    window.deleteUnsyncedPost = function(index) {
+      if (confirm("Bạn có chắc chắn muốn xóa bài viết chưa đồng bộ này khỏi máy tính?")) {
+        try {
+          const localBackup = localStorage.getItem('antigravity_blog_posts');
+          if (!localBackup) return;
+          
+          let localPosts = JSON.parse(localBackup);
+          localPosts.splice(index, 1);
+          localStorage.setItem('antigravity_blog_posts', JSON.stringify(localPosts));
+          
+          showToast("Đã xóa bài viết.");
+          renderDraftsManagerContents();
+          updateDraftsCount();
+          checkLocalPostsForMigration();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
+    window.syncSingleUnsyncedPost = async function(index) {
+      if (!supabaseClient) {
+        showToast("Supabase chưa kết nối!", "error");
+        return;
+      }
+      if (!currentUser) {
+        showToast("Vui lòng đăng nhập Admin để đồng bộ!", "warning");
+        openLogin();
+        return;
+      }
+      
+      try {
+        const localBackup = localStorage.getItem('antigravity_blog_posts');
+        if (!localBackup) return;
+        
+        let localPosts = JSON.parse(localBackup);
+        const post = localPosts[index];
+        if (!post) return;
+        
+        showToast("Đang đồng bộ...", "info");
+        const { error } = await supabaseClient
+          .from('posts')
+          .upsert([post]);
+          
+        if (error) throw error;
+        
+        showToast("Đồng bộ bài viết thành công!");
+        
+        // Remove from local list
+        localPosts.splice(index, 1);
+        localStorage.setItem('antigravity_blog_posts', JSON.stringify(localPosts));
+        
+        renderDraftsManagerContents();
+        updateDraftsCount();
+        checkLocalPostsForMigration();
+        loadPostsFromScript();
+      } catch (e) {
+        console.error(e);
+        showToast("Đồng bộ thất bại! Hãy kiểm tra lại kết nối mạng hoặc cấu hình Supabase.", "error");
+      }
+    };
 
     // --- COPY POST LINK ---
     function copyPostLink() {

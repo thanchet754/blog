@@ -1126,6 +1126,21 @@
           <p class="hero-subtitle">Chào mừng bạn đến với blog tự lưu trữ. Mọi nội dung và hình ảnh của bạn được lưu ngay trong tập tin HTML này.</p>
         </div>
 
+        <!-- MIGRATION BANNER -->
+        <div id="migration-banner" style="display: none; background: var(--accent-glow); border: 1px solid var(--accent-color); border-radius: 12px; padding: 1.25rem; margin-bottom: 2rem; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div>
+              <strong style="display: block; font-size: 0.95rem; margin-bottom: 0.15rem;">Phát hiện bài viết lưu trên máy tính này (Local Storage)</strong>
+              <span style="font-size: 0.85rem; color: var(--text-muted);">Có <span id="local-post-count">0</span> bài viết cũ chưa được đưa lên đám mây Supabase. Bạn có muốn đồng bộ ngay?</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-primary" onclick="migrateLocalPostsToSupabase()" style="padding: 0.5rem 1rem; font-size: 0.825rem; height: auto;">Đồng bộ lên Supabase</button>
+            <button class="btn btn-secondary" onclick="dismissMigrationBanner()" style="padding: 0.5rem 1rem; font-size: 0.825rem; height: auto; width: auto;">Bỏ qua</button>
+          </div>
+        </div>
+
         <div class="filter-bar">
           <div class="search-wrapper">
             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1520,6 +1535,9 @@
 
       // Handle initial routing based on URL hash
       handleRouting();
+
+      // Check if there are local posts that can be migrated to Supabase
+      checkLocalPostsForMigration();
     }
 
     function loadLocalPosts() {
@@ -2672,6 +2690,88 @@
         toast.style.opacity = 0;
         setTimeout(() => toast.remove(), 300);
       }, 4000);
+    }
+
+    // --- LOCAL STORAGE TO SUPABASE MIGRATION ---
+    function checkLocalPostsForMigration() {
+      const isEnabled = document.getElementById('supabase-enable').checked;
+      if (!isEnabled || !supabaseClient) return;
+
+      try {
+        const localBackup = localStorage.getItem('antigravity_blog_posts');
+        if (localBackup) {
+          const localPosts = JSON.parse(localBackup);
+          if (localPosts && localPosts.length > 0) {
+            document.getElementById('local-post-count').textContent = localPosts.length;
+            document.getElementById('migration-banner').style.display = 'flex';
+          }
+        }
+      } catch (e) {
+        console.error("Error checking local posts for migration:", e);
+      }
+    }
+
+    function dismissMigrationBanner() {
+      document.getElementById('migration-banner').style.display = 'none';
+    }
+
+    async function migrateLocalPostsToSupabase() {
+      if (!supabaseClient) {
+        showToast("Supabase chưa được cấu hình hoặc chưa kết nối thành công!", "error");
+        return;
+      }
+
+      if (!currentUser) {
+        showToast("Bạn cần đăng nhập tài khoản Admin để thực hiện đồng bộ bài viết!", "warning");
+        openLogin();
+        return;
+      }
+
+      try {
+        const localBackup = localStorage.getItem('antigravity_blog_posts');
+        if (!localBackup) return;
+
+        const localPosts = JSON.parse(localBackup);
+        if (localPosts.length === 0) return;
+
+        showToast(`Đang đồng bộ ${localPosts.length} bài viết lên Supabase...`, "info");
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const post of localPosts) {
+          try {
+            const { error } = await supabaseClient
+              .from('posts')
+              .upsert([post]);
+
+            if (error) throw error;
+            successCount++;
+          } catch (err) {
+            console.error("Lỗi đồng bộ bài viết:", post.title, err);
+            errorCount++;
+          }
+        }
+
+        if (successCount > 0) {
+          showToast(`Đã đồng bộ thành công ${successCount} bài viết lên Supabase!`);
+          document.getElementById('migration-banner').style.display = 'none';
+          
+          if (confirm(`Đã đồng bộ ${successCount} bài viết lên Supabase thành công! Bạn có muốn xóa bản lưu trữ tạm ở trình duyệt này không để tránh hỏi lại lần sau?`)) {
+            localStorage.removeItem('antigravity_blog_posts');
+          }
+          
+          // Reload posts from Supabase to refresh the UI list
+          loadPostsFromScript();
+        }
+
+        if (errorCount > 0) {
+          showToast(`Có ${errorCount} bài viết gặp lỗi khi đồng bộ.`, "error");
+        }
+      } catch (e) {
+        console.error("Lỗi trong quá trình đồng bộ:", e);
+        showToast("Có lỗi xảy ra trong quá trình đồng bộ!", "error");
+      }
     }
 
     // --- COPY POST LINK ---

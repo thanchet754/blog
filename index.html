@@ -3229,9 +3229,9 @@
       document.getElementById('crop-save-btn').style.display = 'none';
       document.getElementById('crop-cancel-btn').style.display = 'none';
       
-      // Only show Edit/Crop controls if user is Admin OR if Supabase is disabled (Local Mode)
+      // ONLY show Edit/Crop controls when clicked inside the editor AND user has edit permissions (Admin logged in OR Local Mode)
       const isEnabled = document.getElementById('supabase-enable').checked;
-      if (!isEnabled || currentUser) {
+      if (context === 'editor' && (!isEnabled || currentUser)) {
         editControls.style.display = 'flex';
       } else {
         editControls.style.display = 'none';
@@ -3494,25 +3494,7 @@
           if (activeImageElement) {
             activeImageElement.src = finalImageUrl;
             
-            if (lightboxSourceContext === 'post-detail') {
-              const activePostId = window.location.hash.substring(6);
-              const postIndex = posts.findIndex(p => p.id === activePostId);
-              if (postIndex !== -1) {
-                const updatedContent = document.getElementById('post-detail-body').innerHTML;
-                posts[postIndex].content = updatedContent;
-                
-                if (isSupabaseEnabled && supabaseClient) {
-                  const { error } = await supabaseClient
-                    .from('posts')
-                    .upsert([posts[postIndex]]);
-                  if (error) throw error;
-                  showToast("Đã lưu và cập nhật ảnh đã cắt lên Supabase!");
-                } else {
-                  savePostsToLocalBackup();
-                  showToast("Đã lưu ảnh đã cắt cục bộ!");
-                }
-              }
-            } else if (lightboxSourceContext === 'editor') {
+            if (lightboxSourceContext === 'editor') {
               showToast("Đã cập nhật ảnh đã cắt vào khung soạn thảo!");
             }
           }

@@ -235,6 +235,21 @@
       transform: translateY(0);
     }
 
+    .btn-success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+    .btn-success:hover {
+      background: #10b981;
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px 0 rgba(16, 185, 129, 0.25);
+    }
+    .btn-success:active {
+      transform: translateY(0);
+    }
+
     .btn-icon {
       width: 38px;
       height: 38px;
@@ -572,7 +587,7 @@
       border: 1px solid var(--border-color);
       border-radius: 16px;
       box-shadow: var(--glass-shadow);
-      overflow: hidden;
+      overflow: visible;
     }
 
     .editor-header {
@@ -581,6 +596,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
     }
 
     .editor-title-heading {
@@ -706,8 +723,8 @@
     /* EDITOR TOOLBAR & CONTENT */
     .toolbar-container {
       position: sticky;
-      top: 57px; /* Below page header */
-      z-index: 10;
+      top: 71px; /* Below page header */
+      z-index: 90;
       background: var(--bg-editor);
       border: 1px solid var(--border-color);
       border-radius: 8px;
@@ -809,6 +826,8 @@
       display: flex;
       justify-content: flex-end;
       gap: 0.75rem;
+      border-bottom-left-radius: 16px;
+      border-bottom-right-radius: 16px;
     }
 
     /* TOAST SYSTEM */
@@ -1391,6 +1410,7 @@
               <span>Đã tự động lưu nháp</span>
             </span>
             <button class="btn btn-secondary" onclick="cancelEdit()">Hủy Bỏ</button>
+            <button class="btn btn-success" onclick="saveDraftAndExit()">Lưu Bản Nháp</button>
             <button class="btn btn-primary" onclick="publishPost()">Xuất Bản Bài Viết</button>
           </div>
         </div>
@@ -2047,6 +2067,31 @@
         savePostsToLocalBackup();
         showToast("Đã lưu bài viết cục bộ!");
         finishPublish(postData);
+      }
+    }
+
+    function saveDraftAndExit() {
+      const title = document.getElementById('post-title').value.trim();
+      const category = document.getElementById('post-category').value.trim() || 'Bài viết';
+      const summary = document.getElementById('post-summary').value.trim();
+      const content = document.getElementById('editor-content').innerHTML.trim();
+
+      if (!title && !content) {
+        showToast("Vui lòng nhập tiêu đề hoặc nội dung trước khi lưu bản nháp!", "warning");
+        return;
+      }
+
+      const draftData = { title, category, summary, content, coverBase64, currentEditingPostId };
+      localStorage.setItem('antigravity_blog_draft', JSON.stringify(draftData));
+      
+      stopAutoSaveTimer();
+      updateDraftsCount();
+      showToast("Đã lưu bản nháp thành công!");
+      
+      if (currentEditingPostId) {
+        viewPostDetail(currentEditingPostId);
+      } else {
+        showFeedView();
       }
     }
 

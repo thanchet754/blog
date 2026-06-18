@@ -2615,8 +2615,7 @@
           })
           .catch((err) => {
             console.error(err);
-            showToast("Không thể tải lên Supabase! Đang tự động chuyển sang nhúng Base64...", "warning");
-            insertImageAsBase64(file);
+            showToast("Không thể tải ảnh lên Supabase Storage!", "error");
           });
       } else {
         insertImageAsBase64(file);
@@ -2726,8 +2725,7 @@
           })
           .catch((err) => {
             console.error(err);
-            showToast("Không thể tải ảnh bìa lên Supabase! Đang chuyển sang Base64...", "warning");
-            processCoverFileAsBase64(file);
+            showToast("Không thể tải ảnh bìa lên Supabase!", "error");
           });
       } else {
         processCoverFileAsBase64(file);
@@ -3533,9 +3531,9 @@
               const file = new File([blob], `cropped_${Date.now()}.png`, { type: 'image/png' });
               finalImageUrl = await uploadFileToSupabase(file);
             } catch (uploadErr) {
-              console.error("Supabase Storage upload failed, falling back to Base64:", uploadErr);
-              showToast("Tải lên Supabase thất bại! Tự động chuyển sang nhúng Base64 để tránh mất ảnh...", "warning");
-              finalImageUrl = canvas.toDataURL('image/png');
+              console.error("Supabase Storage upload failed:", uploadErr);
+              showToast("Tải lên Supabase thất bại! Không thể lưu ảnh đã cắt.", "error");
+              return;
             }
           } else {
             finalImageUrl = canvas.toDataURL('image/png');

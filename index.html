@@ -1070,15 +1070,93 @@
       }
     }
 
-    /* FOOTER */
-    footer {
-      border-top: 1px solid var(--border-color);
-      padding: 2rem 0;
-      text-align: center;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      background: var(--header-bg);
     }
+
+    /* LIGHTBOX & CROP MODAL */
+    .lightbox-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.95);
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .lightbox-header {
+      position: absolute;
+      top: 1rem;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 2rem;
+      box-sizing: border-box;
+      z-index: 2010;
+    }
+
+    .lightbox-controls {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .lightbox-body {
+      position: relative;
+      max-width: 90%;
+      max-height: 80%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lightbox-img {
+      max-width: 100%;
+      max-height: 80vh;
+      object-fit: contain;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      border-radius: 4px;
+    }
+
+    /* Cropper Styles */
+    .crop-container {
+      position: relative;
+      display: inline-block;
+      cursor: crosshair;
+      user-select: none;
+    }
+
+    .crop-bg-img {
+      max-width: 100%;
+      max-height: 80vh;
+      display: block;
+      opacity: 0.5;
+    }
+
+    .crop-box {
+      position: absolute;
+      border: 2px dashed #ffffff;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
+      overflow: hidden;
+      cursor: move;
+    }
+
+    .crop-handle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: var(--accent-color);
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+    }
+
+    .handle-nw { top: -6px; left: -6px; cursor: nwse-resize; }
+    .handle-ne { top: -6px; right: -6px; cursor: nesw-resize; }
+    .handle-se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+    .handle-sw { bottom: -6px; left: -6px; cursor: nwse-resize; }
   </style>
 </head>
 <body>
@@ -1445,6 +1523,40 @@
         </div>
       </div>
 
+      <!-- IMAGE LIGHTBOX & CROPPER MODAL -->
+      <div id="image-lightbox" class="lightbox-overlay" style="display: none;">
+        <div class="lightbox-header">
+          <div class="lightbox-controls" id="lightbox-edit-controls" style="display: none;">
+            <button class="btn btn-primary" id="crop-btn" onclick="startCropping()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.13 1L6 16h15"/><path d="M1 6.13L16 6v15"/></svg>
+              <span>Cắt ảnh</span>
+            </button>
+            <button class="btn btn-primary" id="crop-save-btn" onclick="applyCrop()" style="display: none; background: #10b981; border-color: #10b981;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>Hoàn tất</span>
+            </button>
+            <button class="btn btn-secondary" id="crop-cancel-btn" onclick="cancelCropping()" style="display: none;">
+              <span>Hủy</span>
+            </button>
+          </div>
+          <div class="lightbox-controls" style="margin-left: auto;">
+            <button class="btn btn-secondary" onclick="downloadLightboxImage()" title="Tải ảnh về máy">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Tải về</span>
+            </button>
+            <button class="btn btn-secondary" onclick="closeLightbox()" title="Đóng">
+              <span>Đóng</span>
+            </button>
+          </div>
+        </div>
+        <div class="lightbox-body" id="lightbox-body">
+          <img id="lightbox-img" class="lightbox-img" src="" alt="Zoomed image">
+          
+          <!-- Crop Tool Interface (HTML injection) -->
+          <div id="crop-interface" style="display: none; width: 100%; height: 100%;"></div>
+        </div>
+      </div>
+
     </div>
   </main>
 
@@ -1507,6 +1619,26 @@
 
       // Setup routing event listener
       window.addEventListener('hashchange', handleRouting);
+
+      // Setup Lightbox delegations
+      const detailBody = document.getElementById('post-detail-body');
+      if (detailBody) {
+        detailBody.addEventListener('click', (e) => {
+          if (e.target.tagName === 'IMG') {
+            openLightbox(e.target, 'post-detail');
+          }
+        });
+      }
+
+      const editorContent = document.getElementById('editor-content');
+      if (editorContent) {
+        editorContent.addEventListener('click', (e) => {
+          if (e.target.tagName === 'IMG') {
+            e.preventDefault();
+            openLightbox(e.target, 'editor');
+          }
+        });
+      }
     });
 
     // --- DEEP LINKING ROUTER ---
@@ -3068,6 +3200,333 @@
         console.error(e);
         showToast("Đồng bộ thất bại! Hãy kiểm tra lại kết nối mạng hoặc cấu hình Supabase.", "error");
       }
+    };
+
+    // --- IMAGE LIGHTBOX & CROPPER ---
+    let activeImageElement = null; 
+    let lightboxSourceContext = ''; 
+    let isCropping = false;
+    
+    let cropBox = { left: 0, top: 0, width: 0, height: 0 };
+    let activeHandle = null;
+
+    window.openLightbox = function(imgElement, context) {
+      activeImageElement = imgElement;
+      lightboxSourceContext = context;
+      isCropping = false;
+      
+      const lightbox = document.getElementById('image-lightbox');
+      const lightboxImg = document.getElementById('lightbox-img');
+      const cropInterface = document.getElementById('crop-interface');
+      const editControls = document.getElementById('lightbox-edit-controls');
+      
+      lightboxImg.src = imgElement.src;
+      lightboxImg.style.display = 'block';
+      cropInterface.style.display = 'none';
+      
+      // Control buttons reset
+      document.getElementById('crop-btn').style.display = 'inline-flex';
+      document.getElementById('crop-save-btn').style.display = 'none';
+      document.getElementById('crop-cancel-btn').style.display = 'none';
+      
+      // Only show Edit/Crop controls if user is Admin OR if Supabase is disabled (Local Mode)
+      const isEnabled = document.getElementById('supabase-enable').checked;
+      if (!isEnabled || currentUser) {
+        editControls.style.display = 'flex';
+      } else {
+        editControls.style.display = 'none';
+      }
+      
+      lightbox.style.display = 'flex';
+    };
+
+    window.closeLightbox = function() {
+      document.getElementById('image-lightbox').style.display = 'none';
+      isCropping = false;
+    };
+
+    window.cancelCropping = function() {
+      isCropping = false;
+      document.getElementById('lightbox-img').style.display = 'block';
+      document.getElementById('crop-interface').style.display = 'none';
+      
+      document.getElementById('crop-btn').style.display = 'inline-flex';
+      document.getElementById('crop-save-btn').style.display = 'none';
+      document.getElementById('crop-cancel-btn').style.display = 'none';
+    };
+
+    window.downloadLightboxImage = function() {
+      const img = document.getElementById('lightbox-img');
+      if (!img || !img.src) return;
+      
+      const a = document.createElement('a');
+      a.href = img.src;
+      a.download = `ngoc_blog_image_${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    };
+
+    window.startCropping = function() {
+      isCropping = true;
+      const img = document.getElementById('lightbox-img');
+      const cropInterface = document.getElementById('crop-interface');
+      
+      // Hide static image
+      img.style.display = 'none';
+      cropInterface.style.display = 'block';
+      
+      // Show cropper controls
+      document.getElementById('crop-btn').style.display = 'none';
+      document.getElementById('crop-save-btn').style.display = 'inline-flex';
+      document.getElementById('crop-cancel-btn').style.display = 'inline-flex';
+      
+      // Get image dimensions as displayed
+      const width = img.clientWidth;
+      const height = img.clientHeight;
+      
+      // Initialize crop box to 80% of image size centered
+      const boxW = Math.floor(width * 0.8);
+      const boxH = Math.floor(height * 0.8);
+      const boxL = Math.floor((width - boxW) / 2);
+      const boxT = Math.floor((height - boxH) / 2);
+      
+      cropBox = { left: boxL, top: boxT, width: boxW, height: boxH };
+      
+      cropInterface.innerHTML = `
+        <div class="crop-container" id="crop-container" style="width: ${width}px; height: ${height}px; margin: auto; position: relative;">
+          <img class="crop-bg-img" src="${img.src}" style="width: ${width}px; height: ${height}px;" draggable="false">
+          <div class="crop-box" id="crop-box" style="left: ${boxL}px; top: ${boxT}px; width: ${boxW}px; height: ${boxH}px; background-image: url('${img.src}'); background-size: ${width}px ${height}px; background-position: -${boxL}px -${boxT}px;">
+            <div class="crop-handle handle-nw" data-handle="nw"></div>
+            <div class="crop-handle handle-ne" data-handle="ne"></div>
+            <div class="crop-handle handle-se" data-handle="se"></div>
+            <div class="crop-handle handle-sw" data-handle="sw"></div>
+          </div>
+        </div>
+      `;
+      
+      setupCropperEvents(width, height);
+    };
+
+    function setupCropperEvents(imgWidth, imgHeight) {
+      const container = document.getElementById('crop-container');
+      const box = document.getElementById('crop-box');
+      if (!container || !box) return;
+      
+      let isMoving = false;
+      let isResizing = false;
+      let startX = 0, startY = 0;
+      let startBox = { ...cropBox };
+      
+      container.addEventListener('mousedown', startDrag);
+      container.addEventListener('touchstart', startDrag, { passive: false });
+      
+      function startDrag(e) {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        const target = e.target;
+        
+        if (target.classList.contains('crop-handle')) {
+          e.preventDefault();
+          isResizing = true;
+          activeHandle = target.getAttribute('data-handle');
+          startX = clientX;
+          startY = clientY;
+          startBox = { ...cropBox };
+        } else if (target.id === 'crop-box') {
+          e.preventDefault();
+          isMoving = true;
+          startX = clientX;
+          startY = clientY;
+          startBox = { ...cropBox };
+        }
+      }
+      
+      window.addEventListener('mousemove', dragMove);
+      window.addEventListener('touchmove', dragMove, { passive: false });
+      
+      function dragMove(e) {
+        if (!isMoving && !isResizing) return;
+        if (e.cancelable) e.preventDefault();
+        
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+        
+        if (isMoving) {
+          let newL = startBox.left + dx;
+          let newT = startBox.top + dy;
+          
+          if (newL < 0) newL = 0;
+          if (newT < 0) newT = 0;
+          if (newL + startBox.width > imgWidth) newL = imgWidth - startBox.width;
+          if (newT + startBox.height > imgHeight) newT = imgHeight - startBox.height;
+          
+          cropBox.left = newL;
+          cropBox.top = newT;
+        } else if (isResizing) {
+          let newL = startBox.left;
+          let newT = startBox.top;
+          let newW = startBox.width;
+          let newH = startBox.height;
+          
+          const minSize = 30;
+          
+          if (activeHandle === 'se') {
+            newW = startBox.width + dx;
+            newH = startBox.height + dy;
+            if (newL + newW > imgWidth) newW = imgWidth - newL;
+            if (newT + newH > imgHeight) newH = imgHeight - newT;
+            if (newW < minSize) newW = minSize;
+            if (newH < minSize) newH = minSize;
+          } else if (activeHandle === 'sw') {
+            newW = startBox.width - dx;
+            newH = startBox.height + dy;
+            if (newW < minSize) newW = minSize;
+            else newL = startBox.left + dx;
+            
+            if (newL < 0) {
+              newW += newL;
+              newL = 0;
+            }
+            if (newT + newH > imgHeight) newH = imgHeight - newT;
+            if (newH < minSize) newH = minSize;
+          } else if (activeHandle === 'ne') {
+            newW = startBox.width + dx;
+            newH = startBox.height - dy;
+            if (newH < minSize) newH = minSize;
+            else newT = startBox.top + dy;
+            
+            if (newT < 0) {
+              newH += newT;
+              newT = 0;
+            }
+            if (newL + newW > imgWidth) newW = imgWidth - newL;
+            if (newW < minSize) newW = minSize;
+          } else if (activeHandle === 'nw') {
+            newW = startBox.width - dx;
+            newH = startBox.height - dy;
+            
+            if (newW < minSize) newW = minSize;
+            else newL = startBox.left + dx;
+            
+            if (newH < minSize) newH = minSize;
+            else newT = startBox.top + dy;
+            
+            if (newL < 0) {
+              newW += newL;
+              newL = 0;
+            }
+            if (newT < 0) {
+              newH += newT;
+              newT = 0;
+            }
+          }
+          
+          cropBox = { left: newL, top: newT, width: newW, height: newH };
+        }
+        
+        box.style.left = `${cropBox.left}px`;
+        box.style.top = `${cropBox.top}px`;
+        box.style.width = `${cropBox.width}px`;
+        box.style.height = `${cropBox.height}px`;
+        box.style.backgroundPosition = `-${cropBox.left}px -${cropBox.top}px`;
+      }
+      
+      window.addEventListener('mouseup', endDrag);
+      window.addEventListener('touchend', endDrag);
+      
+      function endDrag() {
+        isMoving = false;
+        isResizing = false;
+        activeHandle = null;
+      }
+    }
+
+    window.applyCrop = async function() {
+      if (!isCropping) return;
+      
+      const img = document.getElementById('lightbox-img');
+      
+      const origImg = new Image();
+      origImg.crossOrigin = "anonymous";
+      origImg.src = img.src;
+      
+      showToast("Đang xử lý cắt ảnh...", "info");
+      
+      origImg.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          const ratioX = origImg.naturalWidth / img.clientWidth;
+          const ratioY = origImg.naturalHeight / img.clientHeight;
+          
+          const sourceX = cropBox.left * ratioX;
+          const sourceY = cropBox.top * ratioY;
+          const sourceW = cropBox.width * ratioX;
+          const sourceH = cropBox.height * ratioY;
+          
+          canvas.width = sourceW;
+          canvas.height = sourceH;
+          
+          ctx.drawImage(
+            origImg,
+            sourceX, sourceY, sourceW, sourceH,
+            0, 0, sourceW, sourceH
+          );
+          
+          const isSupabaseEnabled = document.getElementById('supabase-enable').checked;
+          let finalImageUrl = '';
+          
+          if (isSupabaseEnabled && supabaseClient) {
+            showToast("Đang tải ảnh đã cắt lên Supabase...", "info");
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            const file = new File([blob], `cropped_${Date.now()}.png`, { type: 'image/png' });
+            finalImageUrl = await uploadFileToSupabase(file);
+          } else {
+            finalImageUrl = canvas.toDataURL('image/png');
+          }
+          
+          if (activeImageElement) {
+            activeImageElement.src = finalImageUrl;
+            
+            if (lightboxSourceContext === 'post-detail') {
+              const activePostId = window.location.hash.substring(6);
+              const postIndex = posts.findIndex(p => p.id === activePostId);
+              if (postIndex !== -1) {
+                const updatedContent = document.getElementById('post-detail-body').innerHTML;
+                posts[postIndex].content = updatedContent;
+                
+                if (isSupabaseEnabled && supabaseClient) {
+                  const { error } = await supabaseClient
+                    .from('posts')
+                    .upsert([posts[postIndex]]);
+                  if (error) throw error;
+                  showToast("Đã lưu và cập nhật ảnh đã cắt lên Supabase!");
+                } else {
+                  savePostsToLocalBackup();
+                  showToast("Đã lưu ảnh đã cắt cục bộ!");
+                }
+              }
+            } else if (lightboxSourceContext === 'editor') {
+              showToast("Đã cập nhật ảnh đã cắt vào khung soạn thảo!");
+            }
+          }
+          
+          closeLightbox();
+        } catch (err) {
+          console.error("Cropping Error:", err);
+          showToast("Lỗi khi cắt ảnh! Thử lại.", "error");
+        }
+      };
+      
+      origImg.onerror = () => {
+        showToast("Lỗi khi tải tài nguyên ảnh gốc để cắt!", "error");
+      };
     };
 
     // --- COPY POST LINK ---

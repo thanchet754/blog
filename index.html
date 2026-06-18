@@ -1426,6 +1426,14 @@
             <!-- Table of Contents Sidebar -->
             <aside class="post-toc-sidebar" id="post-toc-sidebar" style="display: none;">
               <div class="post-toc-sticky">
+                <div class="reader-controls" style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Cỡ chữ bài đọc</span>
+                  <div style="display: flex; gap: 0.25rem;">
+                    <button class="btn btn-secondary" onclick="adjustReaderFontSize(-2)" style="width: 32px; height: 32px; padding: 0; font-size: 0.75rem; border-radius: 6px; display: flex; align-items: center; justify-content: center;" title="Giảm cỡ chữ">A-</button>
+                    <button class="btn btn-secondary" onclick="adjustReaderFontSize(0)" style="width: 32px; height: 32px; padding: 0; font-size: 0.85rem; border-radius: 6px; display: flex; align-items: center; justify-content: center;" title="Cỡ mặc định">A</button>
+                    <button class="btn btn-secondary" onclick="adjustReaderFontSize(2)" style="width: 32px; height: 32px; padding: 0; font-size: 1rem; border-radius: 6px; display: flex; align-items: center; justify-content: center;" title="Tăng cỡ chữ">A+</button>
+                  </div>
+                </div>
                 <h4 class="toc-title">Mục lục bài viết</h4>
                 <nav class="toc-menu" id="post-toc-menu">
                   <!-- Dynamic TOC items -->
@@ -1543,6 +1551,22 @@
                     <button type="button" onclick="setTOCLevel('h4')" class="dropdown-item" id="toc-level-h4">
                       <span class="check-icon"></span> Level 3 (Tiêu đề nhỏ)
                     </button>
+                  </div>
+                </div>
+
+                <div class="toolbar-dropdown">
+                  <button type="button" class="toolbar-btn dropdown-toggle" onclick="toggleToolbarDropdown(event)" title="Cỡ chữ (Font Size)">
+                    <!-- Font Size Icon SVG -->
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+                    <span>Cỡ chữ</span>
+                    <small style="opacity:0.7; font-size:0.6rem; margin-left:2px;">▼</small>
+                  </button>
+                  <div class="dropdown-menu" style="min-width: 160px;">
+                    <button type="button" onclick="setFontSize('2')" class="dropdown-item">Cỡ Nhỏ</button>
+                    <button type="button" onclick="setFontSize('3')" class="dropdown-item">Cỡ Thường</button>
+                    <button type="button" onclick="setFontSize('4')" class="dropdown-item">Cỡ Lớn</button>
+                    <button type="button" onclick="setFontSize('5')" class="dropdown-item">Cỡ Rất Lớn</button>
+                    <button type="button" onclick="setFontSize('6')" class="dropdown-item">Cỡ Cực Đại</button>
                   </div>
                 </div>
                 <button type="button" class="toolbar-btn" onclick="formatText('formatBlock', '<blockquote>')" title="Trích dẫn">
@@ -3110,6 +3134,30 @@
       window.addEventListener('scroll', scrollspyListener);
       scrollspyListener();
     }
+
+    window.setFontSize = function(size) {
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand('fontSize', false, size);
+      
+      // Close dropdowns
+      document.querySelectorAll('.toolbar-dropdown .dropdown-menu').forEach(m => {
+        m.classList.remove('show');
+      });
+    };
+
+    let readerFontSizeOffset = 0;
+    window.adjustReaderFontSize = function(offset) {
+      const article = document.getElementById('post-detail-body');
+      if (!article) return;
+      
+      if (offset === 0) {
+        readerFontSizeOffset = 0;
+        article.style.fontSize = '';
+      } else {
+        readerFontSizeOffset = Math.max(-6, Math.min(10, readerFontSizeOffset + offset));
+        article.style.fontSize = `calc(1.1rem + ${readerFontSizeOffset}px)`;
+      }
+    };
 
     function justifyLeft() {
       formatText('justifyLeft');

@@ -1867,12 +1867,30 @@
       }
     }
 
+    function hasSupabaseSession() {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          try {
+            const data = JSON.parse(localStorage.getItem(key));
+            if (data && (data.access_token || data.currentSession)) {
+              return true;
+            }
+          } catch (e) {}
+        }
+      }
+      return false;
+    }
+
     // --- LOAD POSTS ---
     async function loadPostsFromScript() {
       const isEnabled = document.getElementById('supabase-enable').checked;
+      const isAdmin = currentUser || hasSupabaseSession();
       
       if (isEnabled && supabaseClient) {
-        showToast("Đang tải dữ liệu từ Supabase...", "info");
+        if (isAdmin) {
+          showToast("Đang tải dữ liệu từ Supabase...", "info");
+        }
         try {
           const { data, error } = await supabaseClient
             .from('posts')
@@ -1881,10 +1899,14 @@
 
           if (error) throw error;
           posts = data || [];
-          showToast("Đã tải dữ liệu thành công!");
+          if (isAdmin) {
+            showToast("Đã tải dữ liệu thành công!");
+          }
         } catch (e) {
           console.error("Supabase Database Load Error:", e);
-          showToast("Lỗi tải từ Supabase! Đang chuyển sang dự phòng cục bộ...", "warning");
+          if (isAdmin) {
+            showToast("Lỗi tải từ Supabase! Đang chuyển sang dự phòng cục bộ...", "warning");
+          }
           loadLocalPosts();
         }
       } else {
@@ -2125,8 +2147,37 @@
       showView('post');
     }
 
+    function getActiveDraft() {
+      const draft = localStorage.getItem('antigravity_blog_draft');
+      if (draft) {
+        try {
+          const draftData = JSON.parse(draft);
+          if (draftData && (draftData.title || draftData.content)) {
+            return draftData;
+          }
+        } catch (e) {}
+      }
+      return null;
+    }
+
     // --- NEW EDITOR ---
     function openNewEditor() {
+      const activeDraft = getActiveDraft();
+      if (activeDraft) {
+        if (!activeDraft.currentEditingPostId) {
+          if (confirm("Tìm thấy bản nháp của bài viết mới chưa lưu. Bạn có muốn khôi phục bản nháp này không?")) {
+            restoreActiveDraft();
+            return;
+          }
+        } else {
+          const post = posts.find(p => p.id === activeDraft.currentEditingPostId);
+          const postTitle = post ? post.title : (activeDraft.title || "bài viết khác");
+          if (!confirm(`Chú ý: Bạn đang có bản nháp chưa lưu của bài viết "${postTitle}". Nếu bạn viết bài mới và có thay đổi, bản nháp đó sẽ bị ghi đè. Bạn có chắc chắn muốn tiếp tục không?`)) {
+            return;
+          }
+        }
+      }
+
       currentEditingPostId = null;
       document.getElementById('editor-view-title').textContent = "Viết Bài Mới";
       
@@ -2150,6 +2201,25 @@
         return;
       }
 
+      const activeDraft = getActiveDraft();
+      if (activeDraft) {
+        if (activeDraft.currentEditingPostId === postId) {
+          if (confirm("Tìm thấy bản nháp chưa lưu của bài viết này. Bạn có muốn khôi phục bản nháp không?")) {
+            restoreActiveDraft();
+            return;
+          }
+        } else {
+          let draftName = "bài viết mới";
+          if (activeDraft.currentEditingPostId) {
+            const otherPost = posts.find(p => p.id === activeDraft.currentEditingPostId);
+            draftName = otherPost ? `bài viết "${otherPost.title}"` : "bài viết khác";
+          }
+          if (!confirm(`Chú ý: Bạn đang có bản nháp chưa lưu của ${draftName}. Nếu bạn chỉnh sửa bài viết này và thay đổi, bản nháp đó sẽ bị ghi đè. Bạn có chắc chắn muốn tiếp tục không?`)) {
+            return;
+          }
+        }
+      }
+
       currentEditingPostId = postId;
       document.getElementById('editor-view-title').textContent = "Chỉnh Sửa Bài Viết";
       
@@ -2171,8 +2241,6 @@
 
     function cancelEdit() {
       if (confirm("Bạn có chắc chắn muốn hủy? Mọi thay đổi chưa lưu sẽ bị mất.")) {
-        localStorage.removeItem('antigravity_blog_draft');
-        updateDraftsCount();
         if (currentEditingPostId) {
           viewPostDetail(currentEditingPostId);
         } else {
@@ -2339,7 +2407,19 @@
       const statusSpan = document.getElementById('autosave-status');
       statusSpan.style.display = 'none';
 
-      let lastSavedContent = "";
+      const initialTitle = document.getElementById('post-title').value;
+      const initialCategory = document.getElementById('post-category').value;
+      const initialSummary = document.getElementById('post-summary').value;
+      const initialContent = document.getElementById('editor-content').innerHTML;
+
+      let lastSavedContent = JSON.stringify({
+        title: initialTitle,
+        category: initialCategory,
+        summary: initialSummary,
+        content: initialContent,
+        coverBase64,
+        currentEditingPostId
+      });
       
       autoSaveTimer = setInterval(() => {
         const title = document.getElementById('post-title').value;
@@ -2392,9 +2472,6 @@
               document.getElementById('editor-view-title').textContent = currentEditingPostId ? "Khôi phục bài chỉnh sửa" : "Khôi phục bài nháp mới";
               showView('editor');
               startAutoSaveTimer();
-            } else {
-              localStorage.removeItem('antigravity_blog_draft');
-              updateDraftsCount();
             }
           }
         } catch(e) {

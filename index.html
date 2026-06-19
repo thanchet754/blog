@@ -329,6 +329,7 @@
       flex: 1;
       min-width: 250px;
       max-width: 400px;
+      margin: 0 auto;
     }
 
     .search-input {
@@ -1224,6 +1225,21 @@
       .logo-text {
         font-size: 1.15rem;
       }
+      .search-wrapper {
+        min-width: 100px;
+      }
+      .search-input {
+        padding: 0.55rem 0.75rem 0.55rem 1.85rem;
+      }
+      .search-icon {
+        left: 0.5rem;
+      }
+    }
+    @media (max-width: 480px) {
+      .logo-text {
+        display: none;
+      }
+    }
       .hero-title {
         font-size: clamp(2rem, 6vw, 3rem);
       }
@@ -1333,6 +1349,10 @@
         <div class="logo-icon">N</div>
         <span class="logo-text">Ngọc Blog</span>
       </div>
+      <div class="search-wrapper">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search-input" class="search-input" placeholder="Tìm kiếm bài viết..." oninput="handleSearch()">
+      </div>
       <div class="header-actions">
         <button class="btn btn-secondary" id="drafts-manager-btn" onclick="openDraftsManager()" style="display: none;" title="Quản lý bài viết nháp và lỗi đồng bộ">
           <!-- File Text Icon SVG -->
@@ -1384,11 +1404,7 @@
           </div>
         </div>
 
-        <div class="filter-bar">
-          <div class="search-wrapper">
-            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="search-input" class="search-input" placeholder="Tìm kiếm bài viết..." oninput="handleSearch()">
-          </div>
+        <div class="filter-bar" style="justify-content: flex-start;">
           <div class="category-pills" id="category-pills-container">
             <!-- Dynamic Category Pills -->
           </div>
@@ -2025,6 +2041,9 @@
     // --- SEARCH ---
     function handleSearch() {
       searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+      if (currentView !== 'feed') {
+        showFeedView();
+      }
       renderPosts();
     }
 
